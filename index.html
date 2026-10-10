@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MLBスコアボード日本語版</title>
+<meta name="description" content="2026年MLBポストシーズンの試合結果・勝ち上がり・順位表を日本語でまとめた非公式ファンサイト">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: 手書きスコアボード風の深緑パネルを要所に置き、本文は紙のような明るい地。上から「次の試合 → 勝ち上がり → 結果 → 順位表」 */
+:root{
+  --bg:#f3f4ef; --surface:#ffffff; --fg:#1d2420; --muted:#5f6b64; --line:#d9ddd5;
+  --board:#1f4a37; --board-fg:#f4f1e6; --board-muted:#a9c2b4;
+  --accent:#c8a23a; --win:#1f6b45; --lose:#8a938d; --chip:#e7ece6;
+  --f-display:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --f-num:"Barlow Condensed","Arial Narrow",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121614; --surface:#1a201d; --fg:#e8ebe6; --muted:#9aa59e; --line:#2c3530;
+  --board:#16392a; --board-fg:#f4f1e6; --board-muted:#9fbcac;
+  --accent:#d9b44e; --win:#6cc596; --lose:#7d8780; --chip:#232b27; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121614; --surface:#1a201d; --fg:#e8ebe6; --muted:#9aa59e; --line:#2c3530;
+  --board:#16392a; --board-fg:#f4f1e6; --board-muted:#9fbcac;
+  --accent:#d9b44e; --win:#6cc596; --lose:#7d8780; --chip:#232b27; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:flex;flex-direction:column;gap:40px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:12px;border-bottom:3px solid var(--fg);padding-bottom:12px}
+header h1{font-size:clamp(26px,5vw,40px);font-weight:900;letter-spacing:.02em;line-height:1.15}
+header h1 small{display:block;font-size:13px;font-weight:500;color:var(--muted);letter-spacing:.12em}
+.stamp{font-size:13px;color:var(--muted)}
+section{display:flex;flex-direction:column;gap:16px}
+.sec-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.sec-head h2{font-size:22px;font-weight:900}
+.sec-head p{margin:0;color:var(--muted);font-size:13px}
+
+/* 次の試合 */
+.board{background:var(--board);color:var(--board-fg);border-radius:6px;padding:20px;display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.next{display:flex;flex-direction:column;gap:10px;min-width:0}
+.next .tag{font-size:12px;letter-spacing:.14em;color:var(--accent);font-weight:700}
+.next .when{font-size:13px;color:var(--board-muted)}
+.matchup{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
+.matchup .t{display:flex;flex-direction:column;gap:2px}
+.matchup .t:last-child{text-align:right}
+.matchup .jp{font-size:clamp(18px,3.4vw,24px);font-weight:900;line-height:1.2}
+.matchup .ab{font-size:13px;color:var(--board-muted)}
+.matchup .vs{font-family:var(--f-num);font-size:18px;color:var(--board-muted)}
+.next .note{font-size:13px;color:var(--board-muted);border-top:1px solid rgba(255,255,255,.15);padding-top:8px}
+
+/* 勝ち上がり表 */
+.bracket-scroll{overflow-x:auto;padding-bottom:4px}
+.bracket{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:16px;min-width:700px}
+.round{display:flex;flex-direction:column;gap:10px}
+.round h3{font-size:13px;letter-spacing:.1em;color:var(--muted);font-weight:700}
+.series{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.series .lg{font-size:11px;letter-spacing:.12em;color:var(--muted)}
+.srow{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.srow .n{font-weight:700}
+.srow .w{font-family:var(--f-num);font-size:20px;font-weight:700}
+.srow.lost .n,.srow.lost .w{color:var(--lose);font-weight:500}
+.srow .seed{font-family:var(--f-num);font-size:12px;color:var(--muted);margin-right:6px}
+.status{font-size:12px;font-weight:700;align-self:flex-start;padding:1px 8px;border-radius:999px;background:var(--chip);color:var(--fg)}
+.status.live{background:var(--accent);color:#1d2420}
+
+/* 試合結果 */
+.results{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.res{background:var(--surface);border:1px solid var(--line);border-radius:4px;overflow:hidden;min-width:0}
+.res-head{display:flex;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.res-head b{font-family:var(--f-display);font-weight:900}
+.res-head span{font-size:13px;color:var(--muted)}
+.res table{width:100%;border-collapse:collapse;font-size:14px}
+.res td{padding:7px 14px;border-bottom:1px solid var(--line)}
+.res tr:last-child td{border-bottom:0}
+.res td.g{color:var(--muted);width:3.2em;font-size:12px}
+.res td.sc{text-align:right;font-family:var(--f-num);font-size:18px;white-space:nowrap}
+.res .wn{font-weight:700}
+.res .ls{color:var(--muted)}
+
+/* 順位表 */
+.tabs{display:flex;gap:6px}
+.tabs button{font:inherit;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:6px 16px;border-radius:999px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--board);color:var(--board-fg);border-color:var(--board)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.divs{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.div{background:var(--surface);border:1px solid var(--line);border-radius:4px;overflow-x:auto;min-width:0}
+.div h3{font-size:15px;font-weight:900;padding:10px 14px;border-bottom:2px solid var(--fg)}
+.div table{width:100%;border-collapse:collapse;font-size:14px}
+.div th{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:500;text-align:right;padding:6px 10px}
+.div th:first-child{text-align:left;padding-left:14px}
+.div td{padding:7px 10px;text-align:right;border-top:1px solid var(--line);font-family:var(--f-num);font-size:17px;font-variant-numeric:tabular-nums}
+.div td:first-child{text-align:left;padding-left:14px;font-family:var(--f-body);font-size:14px;font-weight:700}
+.div tr.out td{color:var(--lose)}
+.div tr.out td:first-child{font-weight:500}
+.mark{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;padding:0 6px;margin-left:6px;border-radius:3px;vertical-align:2px;font-family:var(--f-body)}
+.mark.d{background:var(--board);color:var(--board-fg)}
+.mark.wc{background:var(--chip);color:var(--fg);border:1px solid var(--line)}
+.legend{font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
+/* 試合詳細 */
+.picker{display:flex;gap:8px;flex-wrap:wrap}
+.picker button{font:inherit;font-size:13px;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:6px 12px;border-radius:4px;cursor:pointer;display:flex;flex-direction:column;line-height:1.35}
+.picker button small{color:var(--muted);font-size:11px}
+.picker button[aria-selected="true"]{background:var(--board);color:var(--board-fg);border-color:var(--board)}
+.picker button[aria-selected="true"] small{color:var(--board-muted)}
+.picker button:focus-visible,.res .more:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.detail{display:flex;flex-direction:column;gap:18px}
+.linescore-wrap{background:var(--board);color:var(--board-fg);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.ls-title{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--board-muted)}
+.ls-title b{color:var(--accent);letter-spacing:.1em}
+.ls-scroll{overflow-x:auto}
+.linescore{border-collapse:collapse;width:100%;min-width:520px;font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.linescore th{font-weight:500;font-size:13px;color:var(--board-muted);padding:4px 6px;text-align:center}
+.linescore td{font-size:22px;text-align:center;padding:4px 6px;border-top:1px solid rgba(255,255,255,.12)}
+.linescore td:first-child,.linescore th:first-child{text-align:left;font-family:var(--f-body);font-size:15px;font-weight:700;white-space:nowrap;padding-right:14px}
+.linescore .tot{color:var(--accent);font-weight:700;border-left:1px solid rgba(255,255,255,.2)}
+.linescore .zero{color:var(--board-muted)}
+.decisions{display:flex;gap:16px;flex-wrap:wrap;font-size:13px}
+.decisions span b{display:inline-block;min-width:1.6em;text-align:center;background:rgba(255,255,255,.14);border-radius:3px;margin-right:6px;font-weight:700}
+.points{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px;max-width:70ch}
+.teams2{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:4px;min-width:0;display:flex;flex-direction:column}
+.box h3{font-size:15px;font-weight:900;padding:10px 14px;border-bottom:2px solid var(--fg);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.box h3 span{font-family:var(--f-body);font-size:12px;font-weight:500;color:var(--muted)}
+.box h4{margin:0;font-size:12px;letter-spacing:.1em;color:var(--muted);padding:10px 14px 2px;font-weight:700}
+.tbl{overflow-x:auto}
+.tbl table{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-size:11px;color:var(--muted);font-weight:500;text-align:right;padding:5px 8px;white-space:nowrap}
+.tbl th:first-child,.tbl td:first-child{text-align:left;padding-left:14px}
+.tbl td{padding:5px 8px;text-align:right;border-top:1px solid var(--line);font-family:var(--f-num);font-size:15px;white-space:nowrap}
+.tbl td:first-child{font-family:var(--f-body);font-size:13px}
+.tbl td.pos{font-family:var(--f-body);font-size:12px;color:var(--muted);text-align:center}
+.tbl tr.hot td:first-child{font-weight:700}
+.tbl .hl{color:var(--win);font-weight:700}
+.res .more{font:inherit;font-size:12px;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:0 8px;cursor:pointer;margin-left:6px}
+.res .more:hover{background:var(--chip)}
+.fineprint{font-size:12px;color:var(--muted);margin:0}
+footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;line-height:1.8}
+@media (prefers-reduced-motion:no-preference){.tabs button{transition:background .15s}}
+
+.crumb{display:flex;gap:8px;align-items:center;font-size:14px}
+.crumb a,.gnav a{color:var(--fg)}
+.crumb a{font-weight:700;text-decoration:none;border-bottom:2px solid var(--accent)}
+.gnav{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gnav a{display:flex;flex-direction:column;gap:2px;text-decoration:none;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:10px 14px;min-width:0}
+.gnav a:hover{border-color:var(--fg)}
+.gnav a:focus-visible,.crumb a:focus-visible,a.more:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.gnav small{color:var(--muted);font-size:12px}
+.gnav .gnav-next{text-align:right;grid-column:2}
+a.more{font-size:12px;border:1px solid var(--line);color:var(--fg);border-radius:999px;padding:0 8px;margin-left:6px;text-decoration:none;white-space:nowrap}
+a.more:hover{background:var(--chip)}
+</style>
+
+</head><body>
+<div class="wrap">
+  <header>
+    <h1><small>MAJOR LEAGUE BASEBALL 2026</small>MLBスコアボード</h1>
+    <div class="stamp">2026年10月10日 21:30（日本時間）時点</div>
+  </header>
+
+  <section aria-labelledby="h-next">
+    <div class="sec-head"><h2 id="h-next">次の試合</h2><p>時刻はすべて日本時間</p></div>
+    <div class="board">
+      <div class="next">
+        <div class="tag">ALDS 第5戦 ・ 勝てばリーグ優勝決定シリーズへ</div>
+        <div class="when num">10月11日（日） 9:00</div>
+        <div class="matchup">
+          <div class="t"><span class="jp">ホワイトソックス</span><span class="ab">CWS ・ 2勝</span></div>
+          <div class="vs">@</div>
+          <div class="t"><span class="jp">ガーディアンズ</span><span class="ab">CLE ・ 2勝</span></div>
+        </div>
+        <div class="note">対戦成績 2勝2敗のタイ。クリーブランドで最終決戦。</div>
+      </div>
+      <div class="next">
+        <div class="tag">NLCS 第1戦</div>
+        <div class="when num">10月12日（月） 9:00</div>
+        <div class="matchup">
+          <div class="t"><span class="jp">ドジャース</span><span class="ab">LAD ・ 100勝62敗</span></div>
+          <div class="vs">@</div>
+          <div class="t"><span class="jp">ブルワーズ</span><span class="ab">MIL ・ 103勝59敗</span></div>
+        </div>
+        <div class="note">ナ・リーグ勝率1位と2位の対決。4勝先取。</div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-bracket">
+    <div class="sec-head"><h2 id="h-bracket">ポストシーズン勝ち上がり</h2><p>右の数字は各シリーズの勝利数</p></div>
+    <div class="bracket-scroll"><div class="bracket" id="bracket"></div></div>
+  </section>
+
+  <section aria-labelledby="h-results">
+    <div class="sec-head"><h2 id="h-results">試合結果</h2><p>地区シリーズ（5回戦制・3勝先取）。各試合の「詳細」から試合ページへ</p></div>
+    <div class="results" id="results"></div>
+  </section>
+
+  <section aria-labelledby="h-stand">
+    <div class="sec-head"><h2 id="h-stand">レギュラーシーズン最終順位</h2></div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-al" aria-selected="true" data-lg="AL">ア・リーグ</button>
+      <button role="tab" id="tab-nl" aria-selected="false" data-lg="NL">ナ・リーグ</button>
+    </div>
+    <div class="divs" id="divs"></div>
+    <div class="legend"><span><span class="mark d">地区</span> 地区優勝</span><span><span class="mark wc">WC</span> ワイルドカード</span><span>灰色はポストシーズン進出ならず</span></div>
+  </section>
+
+  <footer>
+    このサイトはファンが作成した非公式のまとめページで、MLBおよび各球団とは関係ありません。<br>
+    スコアと順位は10月10日時点の情報です。最新の結果は公式サイトや各種スポーツニュースでご確認ください。
+  </footer>
+</div>
+
+<script>
+const T={TB:"レイズ",NYY:"ヤンキース",BOS:"レッドソックス",BAL:"オリオールズ",TOR:"ブルージェイズ",CLE:"ガーディアンズ",CWS:"ホワイトソックス",MIN:"ツインズ",DET:"タイガース",KC:"ロイヤルズ",HOU:"アストロズ",TEX:"レンジャーズ",SEA:"マリナーズ",ATH:"アスレチックス",LAA:"エンゼルス",MIL:"ブルワーズ",CHC:"カブス",PIT:"パイレーツ",STL:"カージナルス",CIN:"レッズ",ATL:"ブレーブス",PHI:"フィリーズ",MIA:"マーリンズ",WSH:"ナショナルズ",NYM:"メッツ",LAD:"ドジャース",SD:"パドレス",AZ:"ダイヤモンドバックス",SF:"ジャイアンツ",COL:"ロッキーズ"};
+
+const rounds=[
+ {name:"ワイルドカードシリーズ（3回戦制）",series:[
+  {lg:"AL",a:["NYY",5,2],b:["BOS",4,0],done:true},
+  {lg:"AL",a:["CWS",5,2],b:["HOU",6,0],done:true,seedFix:{CWS:5,HOU:3}},
+  {lg:"NL",a:["SD",4,2],b:["CHC",5,0],done:true},
+  {lg:"NL",a:["ATL",3,2],b:["PHI",6,1],done:true}]},
+ {name:"地区シリーズ（5回戦制）",series:[
+  {lg:"AL",a:["TB",1,3],b:["NYY",5,0],done:true},
+  {lg:"AL",a:["CLE",3,2],b:["CWS",6,2],done:false,label:"第5戦 10/11"},
+  {lg:"NL",a:["MIL",1,3],b:["SD",4,1],done:true},
+  {lg:"NL",a:["LAD",2,3],b:["ATL",3,1],done:true}]},
+ {name:"リーグ優勝決定シリーズ（7回戦制）",series:[
+  {lg:"AL",a:["TB",1,0],b:[null,null,0],done:false,label:"10/13 開幕",tbd:"CLE / CWS の勝者"},
+  {lg:"NL",a:["MIL",1,0],b:["LAD",2,0],done:false,label:"10/12 開幕"}]}
+];
+const br=document.getElementById("bracket");
+rounds.forEach(r=>{
+  const col=document.createElement("div");col.className="round";
+  col.innerHTML=`<h3>${r.name}</h3>`;
+  r.series.forEach(s=>{
+    const [a,sa,wa]=s.a,[b,sb,wb]=s.b;
+    const row=(code,seed,w,lost,tbd)=>`<div class="srow${lost?" lost":""}"><span class="n">${code?`${T[code]}`:`<span style="color:var(--muted);font-weight:500">${tbd}</span>`}</span><span class="w">${code?w:""}</span></div>`;
+    const el=document.createElement("div");el.className="series";
+    el.innerHTML=`<span class="lg">${s.lg==="AL"?"ア・リーグ":"ナ・リーグ"}</span>`+
+      row(a,sa,wa,s.done&&wa<wb)+row(b,sb,wb,s.done&&wb<wa,s.tbd)+
+      (s.done?`<span class="status">決着</span>`:`<span class="status live">${s.label}</span>`);
+    col.appendChild(el);
+  });
+  br.appendChild(col);
+});
+
+const ds=[
+ {t:"ア・リーグ ALDS",a:"TB",b:"NYY",sum:"レイズが3勝0敗で突破",g:[["TB",1,"NYY",0,"tb1"],["TB",5,"NYY",2,"tb2"],["TB",4,"NYY",3,"tb3"]]},
+ {t:"ア・リーグ ALDS",a:"CLE",b:"CWS",sum:"2勝2敗・第5戦へ",g:[["CWS",3,"CLE",0,"cle1"],["CWS",4,"CLE",3,"cle2"],["CLE",9,"CWS",3,"cle3"],["CLE",9,"CWS",5,"cle4"]]},
+ {t:"ナ・リーグ NLDS",a:"MIL",b:"SD",sum:"ブルワーズが3勝1敗で突破",g:[["MIL",3,"SD",2,"mil1"],["MIL",4,"SD",3,"mil2"],["SD",4,"MIL",3,"mil3"],["MIL",3,"SD",1,"mil4"]]},
+ {t:"ナ・リーグ NLDS",a:"LAD",b:"ATL",sum:"ドジャースが3勝1敗で突破",g:[["LAD",5,"ATL",3,"lad1"],["ATL",3,"LAD",2,"lad2"],["LAD",3,"ATL",1,"lad3"],["LAD",4,"ATL",1,"lad4"]]}
+];
+document.getElementById("results").innerHTML=ds.map(s=>`
+ <div class="res"><div class="res-head"><b>${T[s.a]} 対 ${T[s.b]}</b><span>${s.sum}</span></div>
+ <table>${s.g.map((x,i)=>`<tr><td class="g">第${i+1}戦</td><td><span class="wn">${T[x[0]]}</span> <span class="ls">対 ${T[x[2]]}</span>${x[4]?`<a class="more" href="game-${x[4]}.html">詳細 →</a>`:""}</td><td class="sc"><span class="wn">${x[1]}</span> - <span class="ls">${x[3]}</span></td></tr>`).join("")}</table></div>`).join("");
+
+const S={AL:{"東地区":[["TB",98,64,"d"],["NYY",93,68,"wc"],["BOS",87,75,"wc"],["BAL",79,82],["TOR",79,83]],
+ "中地区":[["CLE",85,77,"d"],["CWS",84,78,"wc"],["MIN",77,85],["DET",76,86],["KC",69,93]],
+ "西地区":[["HOU",81,81,"d"],["TEX",80,82],["SEA",76,86],["ATH",64,98],["LAA",62,100]]},
+ NL:{"東地区":[["ATL",94,68,"d"],["PHI",88,74,"wc"],["MIA",80,82],["WSH",77,85],["NYM",74,88]],
+ "中地区":[["MIL",103,59,"d"],["CHC",89,73,"wc"],["PIT",82,80],["STL",77,85],["CIN",75,87]],
+ "西地区":[["LAD",100,62,"d"],["SD",91,71,"wc"],["AZ",86,76],["SF",65,97],["COL",58,104]]}};
+const pct=(w,l)=>(w/(w+l)).toFixed(3).replace(/^0/,"");
+function draw(lg){
+  document.getElementById("divs").innerHTML=Object.entries(S[lg]).map(([d,rows])=>{
+    const [,w0,l0]=rows[0];
+    return `<div class="div"><h3>${d}</h3><table><thead><tr><th>チーム</th><th>勝</th><th>敗</th><th>勝率</th><th>差</th></tr></thead><tbody>${
+      rows.map(([c,w,l,m])=>{const gb=((w0-w)+(l-l0))/2;
+        return `<tr class="${m?"":"out"}"><td>${T[c]}${m==="d"?'<span class="mark d">地区</span>':m==="wc"?'<span class="mark wc">WC</span>':""}</td><td>${w}</td><td>${l}</td><td>${pct(w,l)}</td><td>${gb===0?"-":gb}</td></tr>`}).join("")
+    }</tbody></table></div>`}).join("");
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.lg===lg));
+  try{localStorage.setItem("lg",lg)}catch(e){}
+}
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>draw(b.dataset.lg)));
+let start="AL";try{start=localStorage.getItem("lg")||"AL"}catch(e){}
+draw(start==="NL"?"NL":"AL");
+</script>
+
+</body></html>

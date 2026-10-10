@@ -159,3 +159,4 @@ a.more:hover{background:var(--chip)}
 .round-block h2 small{font-size:13px;font-weight:500;color:var(--muted)}
 #all{display:flex;flex-direction:column;gap:36px}
 .res td.g.wide{width:9.5em;font-size:12px;line-height:1.4}
+.res td.g:not(.wide){white-space:nowrap;width:auto}

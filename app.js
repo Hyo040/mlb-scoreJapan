@@ -8,7 +8,8 @@ let D;
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const jp = t => esc(D.teams[t.ab] || (t.ab ? t.ab : '未定'));
+const tname = ab => !ab ? '未定' : D.teams[ab] || { AL: 'ア・リーグ代表', NL: 'ナ・リーグ代表' }[ab] || (ab.includes('/') ? ab.split('/').map(x => D.teams[x] || x).join('／') + 'の勝者' : ab);
+const jp = t => esc(tname(t.ab));
 const nm = n => esc(D.names[n] || n);
 const ip = v => { const w = Math.floor(v), o = Math.round((v - w) * 10); return o ? `${w ? w + ' ' : ''}${o}/3` : `${w}`; };
 const jst = (iso, opt) => new Date(iso).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', ...opt });
@@ -56,7 +57,7 @@ function renderIndex() {
   const cards = [...live, ...upcoming];
   $('next').innerHTML = cards.length ? cards.map(g => {
     const s = sOf(g);
-    const rec = t => t.ab ? `${t.ab} ・ ${s.wins[t.ab] || 0}勝` : '';
+    const rec = t => D.teams[t.ab] ? `${t.ab} ・ ${s.wins[t.ab] || 0}勝` : '';
     const tag = g.state === 'Live' ? `試合中${g.live ? ` ・ ${g.live.inning}回${g.live.top ? '表' : '裏'}` : ''}` : `${label(g)}${g.ifNec ? '（必要な場合）' : ''}`;
     const score = g.state === 'Live' && g.rhe ? `<div class="vs">${g.rhe.away[0]} - ${g.rhe.home[0]}</div>` : '<div class="vs">@</div>';
     return `<div class="next"><div class="tag">${esc(tag)}</div><div class="when num">${when(g.date)}</div>
@@ -71,7 +72,7 @@ function renderIndex() {
   $('bracket').style.minWidth = `${rounds.length * 215}px`;
   $('bracket').innerHTML = rounds.map(r => `<div class="round"><h3>${ROUND_NAME[r]}（${ROUND_FMT[r]}）</h3>${
     S.filter(s => s.round === r).sort((a, b) => a.lg.localeCompare(b.lg)).map(s => {
-      const row = t => `<div class="srow${s.winner && t.ab !== s.winner ? ' lost' : ''}"><span class="n">${jp(t)}</span><span class="w">${t.ab ? (s.wins[t.ab] || 0) : ''}</span></div>`;
+      const row = t => `<div class="srow${s.winner && t.ab !== s.winner ? ' lost' : ''}"><span class="n"${D.teams[t.ab] ? '' : ' style="color:var(--muted);font-weight:500"'}>${jp(t)}</span><span class="w">${D.teams[t.ab] ? (s.wins[t.ab] || 0) : ''}</span></div>`;
       const st = s.winner ? '<span class="status">決着</span>' : s.next ? `<span class="status live">${s.next.state === 'Live' ? '試合中' : `第${s.next.num}戦 ${jst(s.next.date, { month: 'numeric', day: 'numeric' })}`}</span>` : '';
       return `<div class="series"><span class="lg">${LG_NAME[s.lg] || ''}</span>${row(s.teams[0])}${row(s.teams[1])}${st}</div>`;
     }).join('')}</div>`).join('');

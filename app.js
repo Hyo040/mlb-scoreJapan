@@ -218,15 +218,29 @@ function autoPoints(g) {
   }
   return out;
 }
-function batTable(rows) {
-  return `<div class="tbl"><table><thead><tr><th>打者</th><th>守</th><th>打数</th><th>安打</th><th>打点</th><th>本</th><th>四球</th><th>得点</th></tr></thead><tbody>${rows.map(b => {
+function batTable(rows, cum, ab) {
+  return `<div class="tbl"><table><thead><tr><th>打者</th><th>守</th><th>打数</th><th>安打</th><th>打点</th><th>本</th><th>四球</th><th>得点</th><th title="この試合終了時点のポストシーズン通算打率">打率</th></tr></thead><tbody>${rows.map(b => {
+    const c = cum.bat.get(b[0] + '|' + ab);
     const hot = b[5] || b[4] >= 2 || b[3] >= 2;
-    return `<tr class="${hot ? 'hot' : ''}"><td>${nm(b[0])}</td><td class="pos">${POS[b[1]] || esc(b[1])}</td><td>${b[2]}</td><td class="${b[3] >= 2 ? 'hl' : ''}">${b[3]}</td><td class="${b[4] >= 2 ? 'hl' : ''}">${b[4]}</td><td class="${b[5] ? 'hl' : ''}">${b[5] || ''}</td><td>${b[6] || ''}</td><td>${b[7] || ''}</td></tr>`;
+    return `<tr class="${hot ? 'hot' : ''}"><td>${nm(b[0])}</td><td class="pos">${POS[b[1]] || esc(b[1])}</td><td>${b[2]}</td><td class="${b[3] >= 2 ? 'hl' : ''}">${b[3]}</td><td class="${b[4] >= 2 ? 'hl' : ''}">${b[4]}</td><td class="${b[5] ? 'hl' : ''}">${b[5] || ''}</td><td>${b[6] || ''}</td><td>${b[7] || ''}</td><td class="cum">${c && c.AB ? rate(c.H / c.AB) : '-'}</td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
-function pitTable(rows, dec) {
+function pitTable(rows, dec, cum, ab) {
   const mark = n => !dec ? '' : n === dec.W ? ' (勝)' : n === dec.L ? ' (敗)' : n === dec.S ? ' (S)' : '';
-  return `<div class="tbl"><table><thead><tr><th>投手</th><th>投球回</th><th>球数</th><th>被安打</th><th>失点</th><th>自責</th><th>奪三振</th><th>四球</th></tr></thead><tbody>${rows.map(p => `<tr class="${mark(p[0]) ? 'hot' : ''}"><td>${nm(p[0])}${mark(p[0])}</td><td>${ip(p[1])}</td><td>${p[2]}</td><td>${p[3]}</td><td>${p[4]}</td><td>${p[5]}</td><td class="${p[6] >= 5 ? 'hl' : ''}">${p[6]}</td><td>${p[7] || ''}</td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="tbl"><table><thead><tr><th>投手</th><th>投球回</th><th>球数</th><th>被安打</th><th>失点</th><th>自責</th><th>奪三振</th><th>四球</th><th title="この試合終了時点のポストシーズン通算防御率">防御率</th></tr></thead><tbody>${rows.map(p => { const c = cum.pit.get(p[0] + '|' + ab); return `<tr class="${mark(p[0]) ? 'hot' : ''}"><td>${nm(p[0])}${mark(p[0])}</td><td>${ip(p[1])}</td><td>${p[2]}</td><td>${p[3]}</td><td>${p[4]}</td><td>${p[5]}</td><td class="${p[6] >= 5 ? 'hl' : ''}">${p[6]}</td><td>${p[7] || ''}</td><td class="cum">${c && c.outs ? era(c.ER * 27 / c.outs) : '-'}</td></tr>`; }).join('')}</tbody></table></div>`;
+}
+function cumulativeUntil(target) {
+  const bat = new Map(), pit = new Map();
+  const list = D.games.filter(g => g.box && (g.state === 'Final' || g.pk === target.pk)).sort((x, y) => x.date.localeCompare(y.date) || x.pk - y.pk);
+  for (const g of list) {
+    for (const s of ['away', 'home']) {
+      const ab = g[s].ab;
+      for (const b of g.box[s].bat) { const k = b[0] + '|' + ab, o = bat.get(k) || { AB: 0, H: 0 }; o.AB += b[2]; o.H += b[3]; bat.set(k, o); }
+      for (const p of g.box[s].pit) { const k = p[0] + '|' + ab, o = pit.get(k) || { outs: 0, ER: 0 }, w = Math.floor(p[1]); o.outs += w * 3 + Math.round((p[1] - w) * 10); o.ER += p[5]; pit.set(k, o); }
+    }
+    if (g.pk === target.pk) break;
+  }
+  return { bat, pit };
 }
 function renderGame(pk) {
   stamp();
@@ -237,6 +251,7 @@ function renderGame(pk) {
   const row = s => `<tr><td>${jp(g[s])}</td>${Array.from({ length: n }, (_, i) => g.line ? cell(g.line[s][i]) : '<td class="zero"></td>').join('')}${(g.rhe ? g.rhe[s] : ['', '', '']).map(v => `<td class="tot">${v}</td>`).join('')}</tr>`;
   const status = g.state === 'Live' ? `試合中${g.live ? ` ・ ${g.live.inning}回${g.live.top ? '表' : '裏'}` : ''}` : g.state === 'Final' ? '試合終了' : '';
   const pts = g.notes?.pts || autoPoints(g);
+  const cum = g.box ? cumulativeUntil(g) : null;
   const d = g.dec || {};
   $('detail').innerHTML = `
    <div class="linescore-wrap">
@@ -245,7 +260,7 @@ function renderGame(pk) {
     ${d.W || d.L ? `<div class="decisions"><span><b>勝</b>${nm(d.W)}</span><span><b>敗</b>${nm(d.L)}</span>${d.S ? `<span><b>S</b>${nm(d.S)}</span>` : ''}</div>` : `<div class="decisions"><span>${esc(status)}</span></div>`}
    </div>
    ${pts.length ? `<div><h3 style="font-size:15px;margin-bottom:6px">${g.notes?.pts ? '試合の流れ' : 'この試合のポイント'}</h3><ul class="points">${pts.map(p => `<li>${g.notes?.pts ? esc(p) : p}</li>`).join('')}</ul></div>` : ''}
-   ${g.box ? `<div class="teams2">${['away', 'home'].map(s => `<div class="box"><h3>${jp(g[s])}<span>${s === 'away' ? 'ビジター' : 'ホーム'}${g.box[s].risp ? ` ・ 得点圏 ${g.box[s].risp[1]}打数${g.box[s].risp[0]}安打` : ''}</span></h3><h4>打撃成績</h4>${batTable(g.box[s].bat)}<h4>投手成績</h4>${pitTable(g.box[s].pit, g.dec)}</div>`).join('')}</div>` : ''}`;
+   ${g.box ? `<div class="teams2">${['away', 'home'].map(s => `<div class="box"><h3>${jp(g[s])}<span>${s === 'away' ? 'ビジター' : 'ホーム'}${g.box[s].risp ? ` ・ 得点圏 ${g.box[s].risp[1]}打数${g.box[s].risp[0]}安打` : ''}</span></h3><h4>打撃成績</h4>${batTable(g.box[s].bat, cum, g[s].ab)}<h4>投手成績</h4>${pitTable(g.box[s].pit, g.dec, cum, g[s].ab)}</div>`).join('')}</div>` : ''}`;
 
   const list = D.games.filter(hasPage);
   const i = list.findIndex(x => x.pk === pk), p = list[i - 1], q = list[i + 1];

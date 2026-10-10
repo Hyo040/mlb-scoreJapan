@@ -145,3 +145,4 @@ a.more{font-size:12px;border:1px solid var(--line);color:var(--fg);border-radius
 a.more:hover{background:var(--chip)}
 .board a.more{color:var(--board-fg);border-color:rgba(255,255,255,.35)}
 .board a.more:hover{background:rgba(255,255,255,.12)}
+.matchup .jp{word-break:keep-all;overflow-wrap:anywhere;font-size:clamp(16px,2.8vw,22px)}

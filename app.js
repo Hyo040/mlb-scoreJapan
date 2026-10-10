@@ -77,21 +77,9 @@ function renderIndex() {
       return `<div class="series"><span class="lg">${LG_NAME[s.lg] || ''}</span>${row(s.teams[0])}${row(s.teams[1])}${st}</div>`;
     }).join('')}</div>`).join('');
 
-  // 試合結果（新しいラウンドから）
-  const played = S.filter(s => s.games.some(hasPage)).sort((a, b) => ROUND_ORDER.indexOf(b.round) - ROUND_ORDER.indexOf(a.round) || a.lg.localeCompare(b.lg));
-  $('results').innerHTML = played.map(s => {
-    const [a, b] = s.teams;
-    const sum = s.winner ? `${jp({ ab: s.winner })}が${s.wins[s.winner]}勝${(s.wins[s.winner === a.ab ? b.ab : a.ab] || 0)}敗で突破` : `${s.wins[a.ab] || 0}勝${s.wins[b.ab] || 0}敗`;
-    const rows = s.games.filter(hasPage).map(g => {
-      const r = g.rhe || { away: [g.away.score ?? 0], home: [g.home.score ?? 0] };
-      const homeWin = r.home[0] > r.away[0];
-      const W = homeWin ? g.home : g.away, L = homeWin ? g.away : g.home, ws = homeWin ? r.home[0] : r.away[0], ls = homeWin ? r.away[0] : r.home[0];
-      const live = g.state === 'Live';
-      return `<tr><td class="g">第${g.num}戦</td><td>${live ? `${jp(g.away)} 対 ${jp(g.home)} <span class="ls">（試合中）</span>` : `<span class="wn">${jp(W)}</span> <span class="ls">対 ${jp(L)}</span>`}<a class="more" href="game-${g.pk}.html">詳細 →</a></td>
-        <td class="sc">${live ? `${r.away[0]} - ${r.home[0]}` : `<span class="wn">${ws}</span> - <span class="ls">${ls}</span>`}</td></tr>`;
-    }).join('');
-    return `<div class="res"><div class="res-head"><b>${LG_NAME[s.lg] && s.lg !== 'WS' ? LG_NAME[s.lg] + ' ' : ''}${ROUND_NAME[s.round]}</b><span>${jp(a)} 対 ${jp(b)} ・ ${sum}</span></div><table>${rows}</table></div>`;
-  }).join('');
+  // 最新の試合結果（新しい順に6試合）
+  const latest = D.games.filter(hasPage).slice().sort((x, y) => y.date.localeCompare(x.date)).slice(0, 6);
+  $('latest').innerHTML = latest.length ? `<div class="res"><table>${latest.map(g => resultRow(g, true)).join('')}</table></div>` : '<p class="fineprint">まだ試合結果はありません。</p>';
 
   // 順位表
   const draw = lg => {
@@ -108,6 +96,30 @@ function renderIndex() {
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => draw(b.dataset.lg)));
   let start = 'AL'; try { start = localStorage.getItem('lg') === 'NL' ? 'NL' : 'AL'; } catch (e) {}
   draw(start);
+}
+
+
+/* ---------- 試合結果 ---------- */
+function resultRow(g, withLabel) {
+  const r = g.rhe || { away: [g.away.score ?? 0], home: [g.home.score ?? 0] };
+  const homeWin = r.home[0] > r.away[0];
+  const W = homeWin ? g.home : g.away, L = homeWin ? g.away : g.home, ws = homeWin ? r.home[0] : r.away[0], ls = homeWin ? r.away[0] : r.home[0];
+  const live = g.state === 'Live';
+  const head = withLabel ? `<td class="g wide">${esc(label(g))}<br><span class="num">${jst(g.date, { month: 'numeric', day: 'numeric' })}</span></td>` : `<td class="g">第${g.num}戦</td>`;
+  return `<tr>${head}<td>${live ? `${jp(g.away)} 対 ${jp(g.home)} <span class="ls">（試合中）</span>` : `<span class="wn">${jp(W)}</span> <span class="ls">対 ${jp(L)}</span>`}<a class="more" href="game-${g.pk}.html">詳細 →</a></td>
+    <td class="sc">${live ? `${r.away[0]} - ${r.home[0]}` : `<span class="wn">${ws}</span> - <span class="ls">${ls}</span>`}</td></tr>`;
+}
+function renderResults() {
+  stamp();
+  const S = seriesList();
+  const rounds = ROUND_ORDER.slice().reverse().filter(r => S.some(s => s.round === r && s.games.some(hasPage)));
+  $('jump').innerHTML = rounds.map(r => `<a href="#r-${r}">${ROUND_NAME[r]}</a>`).join('');
+  $('all').innerHTML = rounds.map(r => `<section class="round-block" id="r-${r}"><h2>${ROUND_NAME[r]}<small>${ROUND_FMT[r]}</small></h2><div class="results">${
+    S.filter(s => s.round === r && s.games.some(hasPage)).sort((a, b) => a.lg.localeCompare(b.lg)).map(s => {
+      const [a, b] = s.teams;
+      const sum = s.winner ? `${jp({ ab: s.winner })}が${s.wins[s.winner]}勝${(s.wins[s.winner === a.ab ? b.ab : a.ab] || 0)}敗で突破` : `${s.wins[a.ab] || 0}勝${s.wins[b.ab] || 0}敗`;
+      return `<div class="res"><div class="res-head"><b>${s.lg !== 'WS' ? LG_NAME[s.lg] + ' ' : ''}${jp(a)} 対 ${jp(b)}</b><span>${sum}</span></div><table>${s.games.filter(hasPage).map(g => resultRow(g)).join('')}</table></div>`;
+    }).join('')}</div></section>`).join('') || '<p class="fineprint">まだ試合結果はありません。</p>';
 }
 
 /* ---------- 試合ページ ---------- */
@@ -159,6 +171,6 @@ function renderGame(pk) {
 }
 
 window.MLB = { start: async (page, pk) => {
-  try { await load(); page === 'game' ? renderGame(pk) : renderIndex(); }
-  catch (e) { const el = $('detail') || $('next'); if (el) el.innerHTML = `<p>${esc(e.message)}。時間をおいて再読み込みしてください。</p>`; }
+  try { await load(); page === 'game' ? renderGame(pk) : page === 'results' ? renderResults() : renderIndex(); }
+  catch (e) { const el = $('detail') || $('next') || $('all'); if (el) el.innerHTML = `<p>${esc(e.message)}。時間をおいて再読み込みしてください。</p>`; }
 } };

@@ -143,3 +143,5 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
 .gnav .gnav-next{text-align:right;grid-column:2}
 a.more{font-size:12px;border:1px solid var(--line);color:var(--fg);border-radius:999px;padding:0 8px;margin-left:6px;text-decoration:none;white-space:nowrap}
 a.more:hover{background:var(--chip)}
+.board a.more{color:var(--board-fg);border-color:rgba(255,255,255,.35)}
+.board a.more:hover{background:rgba(255,255,255,.12)}

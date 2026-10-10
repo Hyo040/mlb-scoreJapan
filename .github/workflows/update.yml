@@ -1,0 +1,53 @@
+name: スコア自動更新
+
+on:
+  schedule:
+    - cron: '17 * * * *'   # 毎時17分（UTC）に実行
+  workflow_dispatch:        # 手動実行ボタン
+  push:
+    branches: [main]
+    paths-ignore: ['data.json', 'game-*.html']
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-and-deploy
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: MLB公式データを取得してページを作り直す
+        run: node scripts/update.mjs
+      - name: 変更があればコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data.json game-*.html
+          if git diff --cached --quiet; then
+            echo "変更なし"
+          else
+            git commit -m "スコアを自動更新"
+            git push
+          fi
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

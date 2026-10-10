@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MLBポストシーズン選手成績</title>
+<meta name="description" content="MLBポストシーズン通算の打撃・投手成績ランキングと日本人選手の成績。1時間ごとに自動更新。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="common.css">
+</head><body>
+<div class="wrap">
+  <nav class="sitenav" aria-label="サイト内"><a href="index.html">トップ</a><a href="results.html">試合結果</a><a href="players.html" aria-current="page">選手成績</a></nav>
+  <header>
+    <h1><small>MLBスコアボード</small>ポストシーズン選手成績</h1>
+    <div class="stamp" id="stamp">読み込み中…</div>
+  </header>
+
+  <p class="fineprint" id="summary"></p>
+
+  <section aria-labelledby="h-jp">
+    <div class="sec-head"><h2 id="h-jp">日本人選手</h2></div>
+    <div class="pcards" id="japanese"></div>
+  </section>
+
+  <section aria-labelledby="h-rank">
+    <div class="sec-head"><h2 id="h-rank">成績ランキング</h2><p>見出しを押すと並べ替えられます</p></div>
+    <div class="pcontrols">
+      <div class="tabs ptabs" role="tablist"><button role="tab" data-t="bat" aria-selected="true">打撃成績</button><button role="tab" data-t="pit" aria-selected="false">投手成績</button></div>
+      <label class="sel"><span>チーム</span><select id="team"></select></label>
+    </div>
+    <p class="caption" id="caption"></p>
+    <div class="ptable-wrap"><table class="ptable" id="ptable"></table></div>
+  </section>
+
+  <footer>
+    このサイトはファンが作成した非公式のまとめページで、MLBおよび各球団とは関係ありません。<br>
+    スコア・個人成績・順位はMLB公式データをもとに1時間ごとに自動更新しています。試合終了から反映まで最大1時間ほどかかります。
+  </footer>
+</div>
+<script src="app.js"></script>
+<script>MLB.start('players');</script>
+</body></html>

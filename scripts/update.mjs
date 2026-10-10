@@ -10,6 +10,7 @@ const SEASON = Number(process.env.SEASON || 2026);
 const ROUND = { F: 'WC', D: 'DS', L: 'CS', W: 'WS' };
 const DIV = { 201: ['AL', '東地区'], 202: ['AL', '中地区'], 200: ['AL', '西地区'], 204: ['NL', '東地区'], 205: ['NL', '中地区'], 203: ['NL', '西地区'] };
 const DIV_ORDER = ['東地区', '中地区', '西地区'];
+const BOXV = 2; // 個人成績の項目を変えたら上げる（取得済みの試合も取り直す）
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function get(url) {
@@ -60,7 +61,7 @@ export function fromBox(b) {
     const P = id => t.players['ID' + id];
     const bat = (t.batters || []).map(P).filter(p => p && p.stats?.batting && Object.keys(p.stats.batting).length).map(p => {
       const x = p.stats.batting;
-      return [p.person.fullName, p.position?.abbreviation || '', x.atBats ?? 0, x.hits ?? 0, x.rbi ?? 0, x.homeRuns ?? 0, x.baseOnBalls ?? 0, x.runs ?? 0, x.doubles ?? 0, x.triples ?? 0];
+      return [p.person.fullName, p.position?.abbreviation || '', x.atBats ?? 0, x.hits ?? 0, x.rbi ?? 0, x.homeRuns ?? 0, x.baseOnBalls ?? 0, x.runs ?? 0, x.doubles ?? 0, x.triples ?? 0, x.hitByPitch ?? 0, x.sacFlies ?? 0, x.strikeOuts ?? 0, x.stolenBases ?? 0];
     });
     const pit = (t.pitchers || []).map(P).filter(p => p && p.stats?.pitching && Object.keys(p.stats.pitching).length).map(p => {
       const x = p.stats.pitching;
@@ -90,9 +91,9 @@ async function main() {
   // 2) 個人成績（終了済みで前回取得済みのものは再取得しない）
   for (const g of games) {
     const old = prevByPk.get(g.pk);
-    if (g.state === 'Final' && old?.state === 'Final' && old.box) { g.box = old.box; continue; }
+    if (g.state === 'Final' && old?.state === 'Final' && old.box && old.boxv === BOXV) { g.box = old.box; g.boxv = BOXV; if (notes[g.pk]) g.notes = notes[g.pk]; continue; }
     if (g.state === 'Final' || g.state === 'Live') {
-      try { g.box = fromBox(await get(`${API}/game/${g.pk}/boxscore`)); } catch (e) { console.warn('box failed', g.pk, e.message); if (old?.box) g.box = old.box; }
+      try { g.box = fromBox(await get(`${API}/game/${g.pk}/boxscore`)); g.boxv = BOXV; } catch (e) { console.warn('box failed', g.pk, e.message); if (old?.box) g.box = old.box; }
       await sleep(300);
     }
     if (notes[g.pk]) g.notes = notes[g.pk];

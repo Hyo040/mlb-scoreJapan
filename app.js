@@ -122,6 +122,89 @@ function renderResults() {
     }).join('')}</div></section>`).join('') || '<p class="fineprint">まだ試合結果はありません。</p>';
 }
 
+
+/* ---------- 選手成績（ポストシーズン通算） ---------- */
+function aggregate() {
+  const bat = new Map(), pit = new Map();
+  for (const g of D.games) {
+    if (!g.box || g.state !== 'Final') continue;
+    for (const s of ['away', 'home']) {
+      const ab = g[s].ab;
+      for (const b of g.box[s].bat) {
+        const k = b[0] + '|' + ab;
+        const o = bat.get(k) || { name: b[0], team: ab, pos: b[1], G: 0, AB: 0, H: 0, RBI: 0, HR: 0, BB: 0, R: 0, D2: 0, D3: 0, HBP: 0, SF: 0, SO: 0, SB: 0 };
+        if (!['PH', 'PR'].includes(b[1])) o.pos = b[1];
+        o.G++; o.AB += b[2]; o.H += b[3]; o.RBI += b[4]; o.HR += b[5]; o.BB += b[6]; o.R += b[7]; o.D2 += b[8]; o.D3 += b[9];
+        o.HBP += b[10] || 0; o.SF += b[11] || 0; o.SO += b[12] || 0; o.SB += b[13] || 0;
+        bat.set(k, o);
+      }
+      for (const p of g.box[s].pit) {
+        const k = p[0] + '|' + ab;
+        const o = pit.get(k) || { name: p[0], team: ab, G: 0, outs: 0, NP: 0, H: 0, R: 0, ER: 0, SO: 0, BB: 0, HR: 0, W: 0, L: 0, S: 0 };
+        const w = Math.floor(p[1]);
+        o.G++; o.outs += w * 3 + Math.round((p[1] - w) * 10); o.NP += p[2]; o.H += p[3]; o.R += p[4]; o.ER += p[5]; o.SO += p[6]; o.BB += p[7]; o.HR += p[8];
+        if (g.dec) { if (g.dec.W === p[0]) o.W++; if (g.dec.L === p[0]) o.L++; if (g.dec.S === p[0]) o.S++; }
+        pit.set(k, o);
+      }
+    }
+  }
+  for (const o of bat.values()) {
+    const PA = o.AB + o.BB + o.HBP + o.SF, TB = o.H + o.D2 + 2 * o.D3 + 3 * o.HR;
+    o.PA = PA; o.AVG = o.AB ? o.H / o.AB : null; o.OBP = PA ? (o.H + o.BB + o.HBP) / PA : null; o.SLG = o.AB ? TB / o.AB : null;
+    o.OPS = o.OBP !== null && o.SLG !== null ? o.OBP + o.SLG : null;
+  }
+  for (const o of pit.values()) { const ipf = o.outs / 3; o.IP = ipf; o.ERA = ipf ? o.ER * 9 / ipf : null; o.WHIP = ipf ? (o.BB + o.H) / ipf : null; }
+  return { bat: [...bat.values()], pit: [...pit.values()] };
+}
+const rate = v => v === null || v === undefined ? '-' : v.toFixed(3).replace(/^0/, '');
+const era = v => v === null || v === undefined ? '-' : v.toFixed(2);
+const ipOuts = o => `${Math.floor(o / 3)}${o % 3 ? ` ${o % 3}/3` : ''}`;
+const BAT_COLS = [['G', '試合'], ['PA', '打席'], ['AB', '打数'], ['H', '安打'], ['HR', '本塁打'], ['RBI', '打点'], ['R', '得点'], ['BB', '四球'], ['SO', '三振'], ['SB', '盗塁'], ['AVG', '打率', rate], ['OBP', '出塁率', rate], ['SLG', '長打率', rate], ['OPS', 'OPS', rate]];
+const PIT_COLS = [['G', '登板'], ['W', '勝'], ['L', '敗'], ['S', 'S'], ['outs', '投球回', ipOuts], ['NP', '球数'], ['H', '被安打'], ['HR', '被本'], ['BB', '四球'], ['SO', '奪三振'], ['ER', '自責'], ['ERA', '防御率', era], ['WHIP', 'WHIP', era]];
+const ASC = new Set(['ERA', 'WHIP']);
+const RATE_KEYS = new Set(['AVG', 'OBP', 'SLG', 'OPS', 'ERA', 'WHIP']);
+
+function renderPlayers() {
+  stamp();
+  const A = aggregate();
+  const games = D.games.filter(g => g.state === 'Final').length;
+  $('summary').textContent = `終了した${games}試合の合計。打率などの率は、打者は10打席以上、投手は投球回5回以上の選手に絞って並べています。`;
+  const st = { tab: 'bat', key: { bat: 'HR', pit: 'SO' }, team: '' };
+  try { const t = localStorage.getItem('ptab'); if (t === 'pit') st.tab = 'pit'; } catch (e) {}
+
+  // 日本人選手
+  const jpBat = A.bat.filter(o => D.names[o.name]), jpPit = A.pit.filter(o => D.names[o.name]);
+  $('japanese').innerHTML = (jpBat.length || jpPit.length) ? [
+    ...jpBat.map(o => `<div class="pcard"><div class="pname">${nm(o.name)}<small>${jp({ ab: o.team })} ・ ${POS[o.pos] || esc(o.pos)}</small></div><div class="pline num">${o.G}試合 ${o.AB}打数${o.H}安打 ${o.HR}本塁打 ${o.RBI}打点</div><div class="pstat"><span>打率 <b class="num">${rate(o.AVG)}</b></span><span>OPS <b class="num">${rate(o.OPS)}</b></span></div></div>`),
+    ...jpPit.map(o => `<div class="pcard"><div class="pname">${nm(o.name)}<small>${jp({ ab: o.team })} ・ 投手</small></div><div class="pline num">${o.G}登板 ${o.W}勝${o.L}敗${o.S ? o.S + 'S' : ''} ${ipOuts(o.outs)}回 ${o.SO}奪三振</div><div class="pstat"><span>防御率 <b class="num">${era(o.ERA)}</b></span><span>WHIP <b class="num">${era(o.WHIP)}</b></span></div></div>`)
+  ].join('') : '<p class="fineprint">日本人選手の出場はまだありません。</p>';
+
+  // チーム絞り込み
+  const teamsIn = [...new Set([...A.bat, ...A.pit].map(o => o.team))].sort((a, b) => tname(a).localeCompare(tname(b), 'ja'));
+  $('team').innerHTML = `<option value="">すべてのチーム</option>${teamsIn.map(t => `<option value="${esc(t)}">${jp({ ab: t })}</option>`).join('')}`;
+  $('team').addEventListener('change', e => { st.team = e.target.value; draw(); });
+
+  function draw() {
+    const cols = st.tab === 'bat' ? BAT_COLS : PIT_COLS, key = st.key[st.tab];
+    let rows = (st.tab === 'bat' ? A.bat : A.pit).filter(o => !st.team || o.team === st.team);
+    if (RATE_KEYS.has(key)) rows = rows.filter(o => st.tab === 'bat' ? o.PA >= 10 : o.outs >= 15);
+    const asc = ASC.has(key);
+    rows.sort((x, y) => {
+      const a = x[key] ?? (asc ? Infinity : -Infinity), b = y[key] ?? (asc ? Infinity : -Infinity);
+      return (asc ? a - b : b - a) || (st.tab === 'bat' ? y.PA - x.PA : y.outs - x.outs);
+    });
+    const label = cols.find(c => c[0] === key)[1];
+    $('caption').textContent = `${label}の${asc ? '低い' : '高い'}順${RATE_KEYS.has(key) ? `（${st.tab === 'bat' ? '10打席以上' : '投球回5回以上'}）` : ''} ・ ${rows.length}人`;
+    $('ptable').innerHTML = `<thead><tr><th class="rk">#</th><th>${st.tab === 'bat' ? '打者' : '投手'}</th><th>チーム</th>${cols.map(([k, l]) => `<th><button class="sort" data-k="${k}" aria-pressed="${k === key}">${l}${k === key ? (asc ? ' ▲' : ' ▼') : ''}</button></th>`).join('')}</tr></thead>
+      <tbody>${rows.map((o, i) => `<tr class="${D.names[o.name] ? 'jpn' : ''}"><td class="rk">${i + 1}</td><td>${nm(o.name)}</td><td class="tm">${jp({ ab: o.team })}</td>${cols.map(([k, , f]) => `<td class="${k === key ? 'on' : ''}">${f ? f(o[k]) : o[k]}</td>`).join('')}</tr>`).join('')}</tbody>`;
+    document.querySelectorAll('#ptable .sort').forEach(b => b.addEventListener('click', () => { st.key[st.tab] = b.dataset.k; draw(); }));
+    document.querySelectorAll('.ptabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === st.tab));
+    try { localStorage.setItem('ptab', st.tab); } catch (e) {}
+  }
+  document.querySelectorAll('.ptabs button').forEach(b => b.addEventListener('click', () => { st.tab = b.dataset.t; draw(); }));
+  draw();
+}
+
 /* ---------- 試合ページ ---------- */
 function autoPoints(g) {
   const out = [];
@@ -171,6 +254,6 @@ function renderGame(pk) {
 }
 
 window.MLB = { start: async (page, pk) => {
-  try { await load(); page === 'game' ? renderGame(pk) : page === 'results' ? renderResults() : renderIndex(); }
-  catch (e) { const el = $('detail') || $('next') || $('all'); if (el) el.innerHTML = `<p>${esc(e.message)}。時間をおいて再読み込みしてください。</p>`; }
+  try { await load(); page === 'game' ? renderGame(pk) : page === 'results' ? renderResults() : page === 'players' ? renderPlayers() : renderIndex(); }
+  catch (e) { const el = $('detail') || $('next') || $('all') || $('summary'); if (el) el.innerHTML = `<p>${esc(e.message)}。時間をおいて再読み込みしてください。</p>`; }
 } };
